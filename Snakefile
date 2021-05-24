@@ -46,9 +46,7 @@ rule ApoplastP:
 
 	shell:
 		"python2.7 /home/homma/software/ApoplastP_1.0.1/Scripts/ApoplastP.py -o {output.out} -i {input.data}"
-#		"grep -v '|' {output.out} > {params.dummy}; "
-#		"head -n 11 {params.dummy} > {output.out}; "
-#		"rm {params.dummy}"
+
 
 rule targetP:
 	input:
