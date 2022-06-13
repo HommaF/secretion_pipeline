@@ -14,14 +14,14 @@ rule signalP:
 
 	output:
 		signalP_out = "output/{sample}/{sample}_summary.signalp5",
-		signalP_mat = "output/{sample}/{sample}_mature.fasta",
+		signalP_mat = "output/{sample}/{sample}_signalP_mature.fasta",
 
 	params:
 		temp_out = "{sample}_summary.signalp5",
 		temp_mat = "{sample}_mature.fasta"
 
 
-	threads: 12
+	threads: 10
 
 	shell:
 		"signalp -fasta {input.data} -mature; "
@@ -56,23 +56,26 @@ rule targetP:
 
 
 	output:
-		"output/{sample}/{sample}_summary.targetp2"
+		targetP_out = "output/{sample}/{sample}_summary.targetp2",
+		targetP_mat = "output/{sample}/{sample}_targetP_mature.fasta",
 
 	params:
-		outfile = "{sample}_summary.targetp2",
-		org = "pl"
+		temp_out = "{sample}_summary.targetp2",
+		temp_mat = "{sample}_mature.fasta",
+		org = "non-pl"
 
 
-	threads: 12
+	threads: 10
 
 	shell:
-		"targetp -org {params.org} -fasta {input}; "
-		"mv {params.outfile} {output}"
+		"targetp -org {params.org} -fasta {input} -mature; "
+		"mv {params.temp_out} {output.targetP_out};"
+		"mv {params.temp_mat} {output.targetP_mat}"
 	
 
 rule tmhmm:
 	input:
-		"output/{sample}/{sample}_mature.fasta"
+		"output/{sample}/{sample}_signalP_mature.fasta"
 	output:
 		"output/{sample}/{sample}_summary.tmhmm"
 	conda:
@@ -87,20 +90,24 @@ rule tmhmm:
 rule molecular_weight:
 	input:
 		data = "data/{sample}.fasta",
-		mature = "output/{sample}/{sample}_mature.fasta"
+		mature_signalP = "output/{sample}/{sample}_signalP_mature.fasta",
+		signalP_info = "output/{sample}/{sample}_summary.signalp5",
+		mature_targetP = "output/{sample}/{sample}_targetP_mature.fasta"
 
 	conda:
 		"envs/python_tools.yaml"
 
 	output:
 		data = "output/{sample}/{sample}_molweight.tsv",
-		mature = "output/{sample}/{sample}_molweight_mature.tsv"
+		mature = "output/{sample}/{sample}_molweight_mature.tsv",
+		temp = temp("output/{sample}/{sample}_molweight_combined.fasta")
 
 	threads: 1
 
 	shell:
+		"scripts/combine_signalP_targetP.sh {input.mature_signalP} {input.signalP_info} {input.mature_targetP} {output.temp}; "
 		"scripts/mol_weight.py {input.data} {output.data}; "
-		"scripts/mol_weight.py {input.mature} {output.mature}"
+		"scripts/mol_weight.py {output.temp} {output.mature}"
 
 rule combine:
 	input:
@@ -110,6 +117,7 @@ rule combine:
 		apop = "output/{sample}/{sample}_summary.apop",
 		targetp = "output/{sample}/{sample}_summary.targetp2",
 		tmhmm = "output/{sample}/{sample}_summary.tmhmm"
+
 	params:
 		sample = "{sample}",
 		tmp = "output/{sample}/tmp_outfile.tsv",
